@@ -1,0 +1,151 @@
+---
+title: "Adolescent Birth Rate"
+format: html
+editor: visual
+author: Akhil Bhargava
+echo: false
+warning: false
+---
+
+```{r}
+library(readr)
+
+unicef_indicator_1 <- read_csv("unicef_indicator_2.csv", col_types = cols(
+  country = col_character(),
+  alpha_2_code = col_character(),
+  alpha_3_code = col_character(),
+  numeric_code = col_double(),
+  indicator = col_character(),
+  time_period = col_double(),
+  obs_value = col_double(),
+  sex = col_character(),
+  unit_multiplier = col_character(),
+  unit_of_measure = col_character(),
+  observation_status = col_character(),
+  observation_confidentiality = col_character(),
+  time_period_activity_related_to_when_the_data_are_collected = col_logical(),
+  current_age = col_character()
+))
+
+unicef_metadata <- read_csv("unicef_metadata.csv", col_types = cols(
+  country = col_character(),
+  alpha_2_code = col_character(),
+  alpha_3_code = col_character(),
+  iso3c = col_character(),
+  numeric_code = col_double(),
+  year = col_double(),
+  GNI = col_double(),
+  Inflation = col_double(),
+  Life_expectancy = col_double(),
+  Military_expenditure = col_double()
+))
+```
+
+```{r}
+library(dplyr)
+combined_data <- unicef_indicator_1 %>%
+  inner_join(unicef_metadata, by = c("alpha_3_code", "time_period" = "year"))
+```
+
+```{r}
+if (!requireNamespace("rnaturalearth", quietly = TRUE)) {
+  install.packages("rnaturalearth")
+}
+if (!requireNamespace("rnaturalearthdata", quietly = TRUE)) {
+  install.packages("rnaturalearthdata")
+}
+
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggplot2)
+
+world_map <- ne_countries(scale = "medium", returnclass = "sf")
+
+map_data <- left_join(world_map, combined_data, by = c("iso_a3" = "alpha_3_code"))
+
+ggplot() +
+  geom_sf(data = map_data, aes(fill = obs_value)) +
+  scale_fill_viridis_c() +  
+  labs(title = "Adolescent Birth Rate Across the World",
+       fill = "Adolescent Birth Rate\n (per 1000 women)",
+       caption = "Data Source: UNICEF") +
+  theme_minimal()
+
+
+```
+
+**Global Patterns of Adolescent Birth Rates: A Geospatial Analysis**
+
+Using data from UNICEF, our geospatial analysis unveils striking patterns in adolescent birth rates across the world. The map vividly illustrates the distribution of adolescent pregnancies, with countries shaded according to the rate of births per 1000 adolescent women. Shades of color ranging from light to dark represent lower to higher rates, respectively. Upon closer examination, regions such as sub-Saharan Africa and parts of South Asia emerge as hotspots with elevated adolescent birth rates, signaling potential areas for targeted interventions. Conversely, countries in Europe and East Asia exhibit lower rates, reflecting the influence of socio-economic factors, comprehensive sexual education, and access to reproductive health services. This visual narrative underscores the global significance of addressing adolescent reproductive health and highlights the need for tailored policies and programs to empower adolescents worldwide.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+average_data <- combined_data %>%
+  group_by(`country.x`) %>%
+  summarise(avg_obs_value = mean(obs_value, na.rm = TRUE))
+
+selected_countries <- unique(average_data$`country.x`)[seq(1, length(unique(average_data$`country.x`)), by = 60)]
+filtered_data <- average_data[average_data$`country.x` %in% selected_countries,]
+
+country_colors <- rainbow(length(unique(filtered_data$`country.x`)))
+ggplot(filtered_data, aes(x = `country.x`, y = avg_obs_value, fill = `country.x`)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Average Annual Adolescent Birth Rate by Country",
+       x = "",
+       y = "Average Annual Adolescent Births") +
+  scale_fill_manual(values = country_colors) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        axis.title.x = element_blank()) +
+  theme_minimal()
+
+
+```
+
+**Variation in Adolescent Birth Rates Across Select Countries**
+
+The bar chart illustrates the diversity in adolescent birth rates across a selection of countries. Each bar represents the adolescent birth rate per 1000 women, showcasing the variance in reproductive health outcomes globally. Despite progress in sexual education and healthcare access, significant disparities persist, reflecting the complex interplay of cultural, economic, and social factors influencing adolescent reproductive behaviors. Understanding these variations is essential for designing targeted interventions and policies aimed at reducing adolescent pregnancies and improving reproductive health outcomes worldwide. Through concerted efforts and evidence-based strategies, we can strive towards a future where all adolescents have access to comprehensive sexual education and reproductive healthcare, empowering them to make informed choices about their bodies and futures.
+
+```{r}
+library(ggplot2)
+
+combined_data <- inner_join(unicef_indicator_1, unicef_metadata, by = c("alpha_3_code" = "alpha_3_code"))
+
+num_countries <- 10  
+selected_countries <- sample(unique(combined_data$country.x), num_countries)
+
+filtered_data <- combined_data[combined_data$country.x %in% selected_countries,]
+
+# Create a scatter plot
+ggplot(filtered_data, aes(x = `current_age`, y = obs_value, color = country.x)) +
+  geom_point() +
+  labs(title = "Adolescent Birth Rate vs. Current age)",
+       x = "Current Age)",
+       y = "Adolescent Birth Rate (per 1000 women)",
+       color = "Country") +
+  theme_minimal()
+
+```
+
+**Exploring Adolescent Birth Rate Variation Across Age and Countries**
+
+In this analysis, we delved into the nuanced relationship between adolescent birth rates and the age of individuals across different countries. Using a scatter plot visualization, we examined how the adolescent birth rate varies with current age. Each point on the scatter plot represents a specific age group within a sampled set of countries. The x-axis depicts the current age of individuals, while the y-axis illustrates the adolescent birth rate, measured as the number of live births per 1000 adolescent women. Each country is color-coded, providing insight into how adolescent birth rates fluctuate across age groups and geographical locations. This exploration sheds light on the multifaceted nature of adolescent reproductive health outcomes and underscores the importance of targeted interventions tailored to specific age groups and regions.
+
+```{r}
+library(ggplot2)
+
+ggplot(combined_data, aes(x = year, y = obs_value)) +
+  geom_line() +
+  labs(title = "Adolescent Birth Rate Over Time",
+       x = "Year",
+       y = "Adolescent Birth Rate (per 1000 women)") +
+  theme_minimal()
+
+
+
+```
+
+**Trend of Adolescent Birth Rate Over Time**
+
+The time series chart illustrates the trend of Adolescent Birth Rate over time, reflecting the evolution of reproductive health outcomes globally. Tracking the Adolescent Birth Rate, measured in births per 1000 women, offers valuable insights into societal changes, healthcare interventions, and policy effectiveness aimed at reducing adolescent pregnancies and improving reproductive health. Understanding the fluctuations and long-term patterns in Adolescent Birth Rate is crucial for policymakers, healthcare professionals, and researchers to develop targeted interventions and strategies that promote comprehensive sexual education, access to contraceptives, and reproductive healthcare services. By monitoring and analyzing these trends, we can work towards creating a future where all adolescents have the resources and support they need to make informed decisions about their reproductive health and well-being.
